@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+	<meta http-equiv="Cache-Control" content="no-store" />
+	<head>
+	  <meta charset="utf-8">
+	  <title>Fitbit Web Data Connector for Tableau by The Information Lab</title>
+	  <meta name="application-name" content="Fitbit Web Data Connector for Tableau by The Information Lab">
+	  <meta name="author" content="The Information Lab">
+		<meta name="description" content="Fitbit Web Data Connector for Tableau by The Information Lab">
+	  <meta name="viewport" content="width=device-width, initial-scale=1">
+	  <link href='http://fonts.googleapis.com/css?family=Raleway:400,300,600' rel='stylesheet' type='text/css'>
+	  <link rel="stylesheet" href="css/normalize.css">
+	  <link rel="stylesheet" href="css/skeleton.css">
+	  <link rel="stylesheet" href="css/main.css">
+		<link rel="stylesheet" href="css/connector.css">
+	  <link href="css/bootstrap.min.css" rel="stylesheet">
+	  <link href="css/font-awesome.min.css" rel="stylesheet">
+	  <link href="css/yay.min.css" rel="stylesheet">
+		<link href="css/fontcustom.css" rel="stylesheet">
+	  <!-- HTML5 shim IE8 support for HTML5 elements -->
+	  <!--[if lt IE 9]>
+	    <script src="js/html5shiv.min.js"></script>
+	  <![endif]-->
+
+<script src="js/jquery-1.11.1.min.js" type="text/javascript"></script>
+<script src="js/tableauwdc-1.1.0.js" type="text/javascript"></script>
+<script src="js/polyline.js" type="text/javascript"></script>
+<script type="text/javascript">
+
+var myConnector = tableau.makeConnector();
+
+myConnector.init = function() {
+	$('.section-description').html("In just a few clicks, you'll be able to get your Strava activity summaries and maps. When you're ready, hit the button below and you'll be asked to give Tableau access to your Strava data. Once complete, choose between activies or maps, an extract of your data will be created and you can start vizzing!.</br><a class='button button-primary button-margin' id='letsgo'>Lets go!</a>");
+	$('#letsgo').bind('click', function(){
+			$('.ajax-loading').show();
+			window.location.href = "https://www.strava.com/oauth/authorize?client_id=7318&response_type=code&scope=view_private&redirect_uri=http://www.theinformationlab.co.uk/data/strava.html";
+		});
+	tableau.initCallback();
+}
+
+curPage = 1;
+dataSize = 0;
+
+function getMapsData(activityID, access_token, curRec, totalRec, callback) {
+	var results = [];
+	var actURL = "http://www.theinformationlab.co.uk/data/strava_callback.php?req=activity&activity="+activityID+"&access_token=" + access_token;
+	$.ajax({
+		url: actURL,
+		type: 'GET',
+		success: function(actData){
+			var activity = JSON.parse(actData);
+			var map = activity.map.polyline;
+			var decodedMap = polyline.decode(map);
+			for (var j = 0; j < decodedMap.length; j++) {
+				coords = decodedMap[j];
+				var entry = {};
+				entry.ActivityID = activityID;
+				entry.Lat = coords[0];
+				entry.Lon = coords[1];
+				entry.Path = j;
+				var StartDate = activity["start_date_local"];
+				StartDate = StartDate.replace("T"," ");
+				StartDate = StartDate.replace("Z","");
+				entry.StartDateTime = StartDate;
+				entry.Distance = activity.distance;
+				results.push(entry);
+				++dataSize;
+			}
+			callback(results, curRec, totalRec);
+		}
+	});
+}
+
+myConnector.getColumnHeaders = function() {
+	var requestData = JSON.parse(tableau.connectionData);
+	if (requestData[3] == "activities") {
+		var fieldNames = ["ActivityID","ActivityName","Distance","MovingTime","ElapsedTime","TotalElevationGain","Type","StartDateTime","LatStart","LonStart","LatEnd","LonEnd","City","State","Country","Trainer","Commute","Manual","Private","Flagged","AverageSpeed","MaxSpeed","AverageWatts","WeightedAverageWatts","Kilojoules","DeviceWatts","AverageHeartRate","MaxHeartRate"];
+		var fieldTypes = ["string","string","float","int","int","float","string","datetime","float","float","float","float","string","string","string","bool","bool","bool","bool","bool","float","float","float","float","float","bool","float","float"];
+	} else if (requestData[3] == "maps") {
+		var fieldNames = ["ActivityID","Lat","Lon","Path","StartDateTime","Distance"];
+		var fieldTypes = ["string","float","float","int","datetime","string"];
+	}
+	tableau.headersCallback(fieldNames, fieldTypes); // tell tableau about the fields and their types
+};
+
+myConnector.getTableData = function() {
+	var requestData = JSON.parse(tableau.connectionData);
+	if (requestData[3] == "activities") {
+		var toRet = [];
+		var reqUrl = "http://www.theinformationlab.co.uk/data/strava_callback.php?req=activities&page="+curPage+"&access_token=" + requestData[0];
+		$.ajax({
+			url: reqUrl,
+			type: 'GET',
+			success: function(data){
+				var activities = JSON.parse(data);
+				for (var i = 0; i < activities.length; i++) {
+					var activity = activities[i];
+					var entry = {};
+					entry.ActivityID = activity.id;
+					entry.ActivityName = activity.name
+					entry.Distance = activity.distance;
+					entry.MovingTime = activity["moving_time"];
+					entry.ElapsedTime = activity["elapsed_time"];
+					entry.TotalElevationGain = activity["total_elevation_gain"];
+					entry.Type = activity.type;
+					var StartDate = activity["start_date_local"];
+					StartDate = StartDate.replace("T"," ");
+					StartDate = StartDate.replace("Z","");
+					entry.StartDateTime = StartDate;
+					var StartLatLon = activity["start_latlng"];
+					entry.StartLat = StartLatLon[0];
+					entry.StartLon = StartLatLon[1];
+					var EndLatLon = activity["end_latlng"];
+					entry.EndLat = EndLatLon[0];
+					entry.EndLon = EndLatLon[1];
+					entry.City = activity["location_city"];
+					entry.State = activity["location_state"];
+					entry.Country = activity["location_country"];
+					entry.Trainer = activity.trainer;
+					entry.Commute = activity.commute;
+					entry.Manual = activity.manual;
+					entry.Private = activity["private"];
+					entry.Flagged = activity.flagged;
+					entry.AverageSpeed = activity["average_speed"];
+					entry.MaxSpeed = activity["max_speed"];
+					entry.AverageWatts = activity["average_watts"];
+					entry.WeightedAverageWatts = activity["weighted_average_watts"];
+					entry.Kilojoules = activity.kilojoules;
+					entry.DeviceWatts = activity["device_watts"];
+					entry.AverageHeartRate = activity["average_heartrate"];
+					entry.MaxHeartRate = activity["max_heartrate"];
+					toRet.push(entry);
+					++dataSize;
+				}
+				var moreData = activities.length == 200;
+				if (moreData) {
+					++curPage;
+				}
+				tableau.dataCallback(toRet, dataSize.toString(), moreData);
+			}
+		});
+	} else if (requestData[3] == "maps") {
+		var toRet = [];
+		var reqUrl = "http://www.theinformationlab.co.uk/data/strava_callback.php?req=activities&page="+curPage+"&access_token=" + requestData[0];
+		$.ajax({
+			url: reqUrl,
+			type: 'GET',
+			success: function(data){
+				var activities = JSON.parse(data);
+				for (var i = 0; i < activities.length; i++) {
+					var activitySummary = activities[i];
+					var activityID = activitySummary.id;
+					var resultArray = getMapsData(activityID, requestData[0], i, activities.length, function(results, curRec, totalRec) {
+						toRet = $.merge(toRet,results);
+						if (curRec == totalRec - 1) {
+							var moreData = totalRec == 200;
+							if (moreData) {
+								++curPage;
+							}
+							tableau.dataCallback(toRet, dataSize.toString(), moreData);
+						}
+					});
+				}
+			}
+		});
+	}
+};
+
+myConnector.setConnection = function(access_token,userid,fullname,apicall) {
+	var userData = [];
+	userData[0] = access_token;
+	userData[1] = userid;
+	userData[2] = fullname;
+	userData[3] = apicall;
+	tableau.connectionData = JSON.stringify(userData);
+};
+
+tableau.registerConnector(myConnector);
+
+function selectDataDownload(userProfile) {
+	var userProfile = JSON.parse(tableau.connectionData);
+	$('.section-description').html("Hi "+userProfile[2]+"!<br/><a class='button button-primary button-margin' id='activities'>Get Activities</a>&#32;&#32;&#32;<a class='button button-primary button-margin' id='maps'>Get Tracking Data</a>");
+	$('.ajax-loading').hide();
+	$('#activities').bind('click', function(){
+		$('.ajax-loading').show();
+		event.preventDefault();
+		myConnector.setConnection(userProfile[0],userProfile[1],userProfile[2],"activities");
+		tableau.connectionName = 'Strava Activities ' + userProfile[2];
+		tableau.submit();
+	});
+$('#maps').bind('click', function(){
+		$('.ajax-loading').show();
+		event.preventDefault();
+		myConnector.setConnection(userProfile[0],userProfile[1],userProfile[2],"maps");
+		tableau.connectionName = 'Strava Maps ' + userProfile[2];
+		tableau.submit();
+	});
+}
+
+function getQueryParams(qs) {
+    qs = qs.split("+").join(" ");
+
+    var params = {}, tokens,
+        re = /[?&]?([^=]+)=([^&]*)/g;
+
+    while (tokens = re.exec(qs)) {
+        params[decodeURIComponent(tokens[1])]
+            = decodeURIComponent(tokens[2]);
+    }
+
+    return params;
+}
+
+$(document).ready(function() {
+	$('.button').hide();
+	var query = getQueryParams(document.location.search);
+	if (tableau.connectionData) {
+		selectDataDownload();
+	} else if (!query.code){
+
+	} else {
+		var reqURL = "http://www.theinformationlab.co.uk/data/strava_callback.php?code=" + query.code;
+		$.ajax({
+        	url: reqURL,
+        	type: 'GET',
+        	success: function(data){
+        		var auth = JSON.parse(data);
+ 					  var fullName = auth.athlete.firstname + " " + auth.athlete.lastname;
+        		myConnector.setConnection(auth["access_token"],auth.athlete.id,fullName,"");
+        		selectDataDownload();
+        	},
+        	error: function(error){
+            	console.log("Error!: " + error);
+        	}
+    	});
+	}
+
+});
+
+</script>
+</head>
+<body class="yay-hide">
+<div class="full-container">
+  <!-- Bootstrap top navbar -->
+  <nav class="navbar navbar-default navbar-fixed-top">
+    <div class="container-fluid">
+
+      <!-- Yay toggle button -->
+      <button class="btn btn-default navbar-btn yay-toggle" type="button"><i class="fa fa-bars"></i></button>
+
+      <a class="navbar-brand" href="#"></a>
+
+    </div><!-- /.container-fluid -->
+  </nav>
+  <!-- /Bootstrap top navbar -->
+
+  <div class="yaybar yay-shrink yay-hide-to-small yay-gestures yay-overlap-content yay-light">
+    <div class="nano">
+      <div class="nano-content">
+
+        <ul>
+					<li>
+            <a href="fitbit.html"><i class="icon-fitbit" style="font-size:22px"></i>Fitbit</a>
+          </li>
+					<li class="active">
+						<a href="strava.html"><i class="icon-strava" style="font-size:22px"></i>Strava</a>
+					</li>
+					<li>
+						<a href="moves.html"><i class="icon-Moves" style="font-size:22px"></i>Moves</a>
+					</li>
+					<li>
+						<a href="quandl.html"><i class="icon-quandl" style="font-size:22px"></i>Quandl</a>
+					</li>
+					<li>
+						<a href="directions.html"><i class="icon-Mapbox" style="font-size:22px"></i>Mapbox Directions</a>
+					</li>
+					<li class="label">Created by The Information Lab</li>
+        </ul>
+
+      </div>
+    </div>
+  </div>
+  <!-- /Yay Sidebar -->
+<div class="content-wrap">
+<div class='ajax-loading' id='loadingDiv'> </div>
+ <div class="section">
+ 		 <div class="tableauContainer ">
+ 				<h4 class="section-heading centre">Welcome to the Strava Web Data Connector for Tableau</h4>
+ 				<p class="centre"> <img src="images/strava.png" alt="strava" style="width:450px;height:100px;"> </p>
+ 				<p class="section-description centre">Please open this web data connector in Tableau version 9.1 or greater.<br/><a href="http://www.tableausoftware.com/partner-trial?id=19124">Click here to download a trial</a></p>
+ 				<p class="section-logo centre"><a href="http://www.theinformationlab.co.uk"><img src="images/logo.png" alt="fitbit" style="width:188px;height:75px;"></a></p>
+ 		 </div>
+ </div>
+ </div>
+</div>
+ <script src="js/jquery-1.11.1.min.js"></script>
+ <script src="js/bootstrap.min.js"></script>
+ <script src="js/jquery.nanoscroller.min.js"></script>
+ <script src="js/yay.min.js"></script>
+
+</body>
+</html>

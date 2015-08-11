@@ -1,0 +1,49 @@
+/*
+  Icon Font: fontcustom
+*/
+
+@font-face {
+  font-family: "fontcustom";
+  src: url("../fonts/fontcustom_2ff0d0a8a81bdd9d5e83286e4ee3c7d5.eot");
+  src: url("../fonts/fontcustom_2ff0d0a8a81bdd9d5e83286e4ee3c7d5.eot?#iefix") format("embedded-opentype"),
+       url("../fonts/fontcustom_2ff0d0a8a81bdd9d5e83286e4ee3c7d5.woff") format("woff"),
+       url("../fonts/fontcustom_2ff0d0a8a81bdd9d5e83286e4ee3c7d5.ttf") format("truetype"),
+       url("../fonts/fontcustom_2ff0d0a8a81bdd9d5e83286e4ee3c7d5.svg#fontcustom") format("svg");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@media screen and (-webkit-min-device-pixel-ratio:0) {
+  @font-face {
+    font-family: "fontcustom";
+    src: url("../fonts/fontcustom_2ff0d0a8a81bdd9d5e83286e4ee3c7d5.svg#fontcustom") format("svg");
+  }
+}
+
+[data-icon]:before { content: attr(data-icon); }
+
+[data-icon]:before,
+.icon-Mapbox:before,
+.icon-Moves:before,
+.icon-fitbit:before,
+.icon-quandl:before,
+.icon-strava:before {
+  display: inline-block;
+  font-family: "fontcustom";
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  line-height: 1;
+  text-decoration: inherit;
+  text-rendering: optimizeLegibility;
+  text-transform: none;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  font-smoothing: antialiased;
+}
+
+.icon-Mapbox:before { content: "\f104"; }
+.icon-Moves:before { content: "\f103"; }
+.icon-fitbit:before { content: "\f100";padding-left: 5px;padding-right: 5px;}
+.icon-quandl:before { content: "\f102"; }
+.icon-strava:before { content: "\f101"; }

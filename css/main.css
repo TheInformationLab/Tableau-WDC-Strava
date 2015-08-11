@@ -1,0 +1,13 @@
+body {background: url(labs_clear.png) bottom left no-repeat fixed;
+		background-position-x: 60px
+}
+
+.section{ min-height: 100%;
+		  max-width: 850px;
+		  padding-top: 55px;
+		  margin:auto;
+		}
+
+.centre { text-align:center;}
+
+.button-margin { margin-top:30px;}
